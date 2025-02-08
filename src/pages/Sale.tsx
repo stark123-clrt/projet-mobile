@@ -1,14 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { QrCode, Trash2, CreditCard, Wallet, Contact as ContactlessPayment, History, Plus, Minus, Printer, Search } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { PaymentMethod, SaleFilters } from '../types';
 import { useTheme } from '../context/ThemeContext';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 const Sale: React.FC = () => {
   const { darkMode } = useTheme();
   const [showHistory, setShowHistory] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showProductSearch, setShowProductSearch] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [cashReceived, setCashReceived] = useState<string>('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -33,6 +35,17 @@ const Sale: React.FC = () => {
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.barcode?.includes(searchTerm)
   );
+
+  const handleScan = (result: string) => {
+    const product = products.find(p => p.barcode === result);
+    if (product) {
+      addToCart(product);
+    } else {
+      alert('Produit non trouvé dans l\'inventaire');
+      // Option pour ajouter manuellement
+      setShowProductSearch(true);
+    }
+  };
   
   const handleCompleteSale = async () => {
     if (!selectedPaymentMethod) return;
@@ -278,13 +291,22 @@ const Sale: React.FC = () => {
           </button>
           <button 
             className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700"
-            onClick={() => setShowProductSearch(true)}
+            onClick={() => setShowScanner(!showScanner)}
             title="Scanner un code-barres"
           >
             <QrCode size={24} />
           </button>
         </div>
       </div>
+      
+      {showScanner && (
+        <div className="mb-6 h-[300px] overflow-hidden rounded-lg">
+          <BarcodeScanner
+            onClose={() => setShowScanner(false)}
+            onScan={handleScan}
+          />
+        </div>
+      )}
       
       <div className="space-y-4 mb-6">
         {cart.map((item) => (
