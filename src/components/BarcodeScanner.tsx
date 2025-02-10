@@ -68,10 +68,10 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
               frameRate: { ideal: 60, min: 30 }
             },
             area: {
-              top: "0%",
-              right: "0%",
-              left: "0%",
-              bottom: "0%"
+              top: "40%",
+              right: "20%",
+              left: "20%",
+              bottom: "40%"
             }
           },
           locator: {
@@ -148,20 +148,27 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           drawingCtx.lineWidth = 3;
           const rectWidth = width * 0.6;
           const rectHeight = height * 0.2;
-          const rectX = (width - rectWidth) / 2;   // Centre horizontalement
-          const rectY = (height - rectHeight) / 2;  // Centre verticalement
+          const rectX = (width - rectWidth) / 2;
+          const rectY = (height - rectHeight) / 2;
+
+          // Ajouter un fond semi-transparent autour du rectangle
+          drawingCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          drawingCtx.fillRect(0, 0, width, rectY); // Haut
+          drawingCtx.fillRect(0, rectY + rectHeight, width, height - (rectY + rectHeight)); // Bas
+          drawingCtx.fillRect(0, rectY, rectX, rectHeight); // Gauche
+          drawingCtx.fillRect(rectX + rectWidth, rectY, width - (rectX + rectWidth), rectHeight); // Droite
+
+          // Dessiner le rectangle
           drawingCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
 
-          // Ligne de scan
-
+          // Ligne de scan (uniquement dans le rectangle)
           const scanLineY = rectY + (rectHeight / 2);
           drawingCtx.beginPath();
-          drawingCtx.moveTo(0, scanLineY);
-          drawingCtx.lineTo(width, scanLineY);
+          drawingCtx.moveTo(rectX, scanLineY);
+          drawingCtx.lineTo(rectX + rectWidth, scanLineY);
           drawingCtx.strokeStyle = "red";
           drawingCtx.lineWidth = 2;
           drawingCtx.stroke();
-
 
           if (result.box) {
             drawingCtx.beginPath();
@@ -177,7 +184,6 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             drawingCtx.closePath();
             drawingCtx.stroke();
           }
-
 
           if (result.codeResult?.code) {
             drawingCtx.font = "bold 16px Arial";
