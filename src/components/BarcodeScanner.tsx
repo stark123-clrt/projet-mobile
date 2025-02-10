@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import Quagga from '@ericblade/quagga2';
 import { X, Camera, CameraOff } from 'lucide-react';
 
-
-// Seules interfaces nécessaires
 interface BarcodeScannerProps {
   onClose: () => void;
   onScan: (result: string) => void;
@@ -19,15 +17,11 @@ interface QuaggaJSCanvas {
   };
 }
 
-
-
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
   onClose,
   onScan,
   showCloseButton = true
 }) => {
-
-
   const [isStarted, setIsStarted] = useState(true);
   const lastResultRef = useRef<string>('');
   const lastScanTimeRef = useRef<number>(0);
@@ -68,28 +62,28 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             target: interactive,
             constraints: {
               facingMode: "environment",
-              width: { min: 450, ideal: 1280, max: 1920 },
-              height: { min: 300, ideal: 720, max: 1080 },
+              width: { min: 640, ideal: 1280, max: 1920 },
+              height: { min: 480, ideal: 720, max: 1080 },
               aspectRatio: { min: 1, max: 2 },
-              frameRate: { ideal: 30, min: 15 }
+              frameRate: { ideal: 60, min: 30 }
             },
             area: {
-              top: "30%",
-              right: "15%",
-              left: "15%",
-              bottom: "30%"
+              top: "0%",
+              right: "0%",
+              left: "0%",
+              bottom: "0%"
             }
           },
           locator: {
             patchSize: "medium",
-            halfSample: true
+            halfSample: false
           },
-          numOfWorkers: 4,
+          numOfWorkers: navigator.hardwareConcurrency || 4,
           decoder: {
-            readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader", "upc_e_reader"]
+            readers: ["ean_reader", "ean_8_reader"]
           },
           locate: true,
-          frequency: 10
+          frequency: 15
         });
 
         if (!mountedRef.current) return;
@@ -101,12 +95,12 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           if (!mountedRef.current) return;
 
           const now = Date.now();
-          if (now - lastScanTimeRef.current < 300) return;
+          if (now - lastScanTimeRef.current < 200) return;
 
           const { code, confidence } = result.codeResult;
           if (!code || !/^\d{8,13}$/.test(code)) return;
 
-          if (confidence < 0.75) return;
+          if (confidence < 0.70) return;
 
           if (!scanAttempts.current[code]) {
             scanAttempts.current[code] = 1;
@@ -114,7 +108,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             scanAttempts.current[code]++;
           }
 
-          if (scanAttempts.current[code] >= 2 && code !== lastResultRef.current) {
+          if (scanAttempts.current[code] >= 1 && code !== lastResultRef.current) {
             lastResultRef.current = code;
             lastScanTimeRef.current = now;
 
@@ -127,7 +121,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
                 if (mountedRef.current && isStarted) {
                   Quagga.start();
                 }
-              }, 300);
+              }, 200);
             } catch (e) {
               console.warn('Error during scan processing:', e);
               if (mountedRef.current && isStarted) {
@@ -152,17 +146,17 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           // Rectangle de scan
           drawingCtx.strokeStyle = "#FF3B58";
           drawingCtx.lineWidth = 3;
-          const rectWidth = width * 0.7;
+          const rectWidth = width;
           const rectHeight = height * 0.4;
-          const rectX = (width - rectWidth) / 2;
+          const rectX = 0;
           const rectY = (height - rectHeight) / 2;
           drawingCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
 
           // Ligne de scan
           const scanLineY = rectY + (rectHeight / 2);
           drawingCtx.beginPath();
-          drawingCtx.moveTo(rectX, scanLineY);
-          drawingCtx.lineTo(rectX + rectWidth, scanLineY);
+          drawingCtx.moveTo(0, scanLineY);
+          drawingCtx.lineTo(width, scanLineY);
           drawingCtx.strokeStyle = "red";
           drawingCtx.lineWidth = 2;
           drawingCtx.stroke();
