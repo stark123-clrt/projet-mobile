@@ -148,8 +148,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           drawingCtx.lineWidth = 3;
           const rectWidth = width * 0.6;
           const rectHeight = height * 0.2;
-          const rectX = 0;
-          const rectY = (height - rectHeight) / 2;
+          const rectX = (width - rectWidth) / 2;   // Centre horizontalement
+          const rectY = (height - rectHeight) / 2;  // Centre verticalement
           drawingCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
 
           // Ligne de scan
