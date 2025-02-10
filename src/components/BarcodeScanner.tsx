@@ -3,6 +3,39 @@ import Quagga from '@ericblade/quagga2';
 import { X, Camera, CameraOff } from 'lucide-react';
 
 
+// Définition des types
+type Point = [number, number];
+
+interface QuaggaJSBoxCoordinates {
+  box: Point[];
+  boxes?: Point[][];
+}
+
+interface QuaggaJSCodeResult {
+  code: string;
+  format: string;
+  confidence: number;
+}
+
+interface QuaggaJSDetectedObject extends QuaggaJSBoxCoordinates {
+  codeResult: QuaggaJSCodeResult;
+  line: Array<{ x: number; y: number }>;
+}
+
+interface QuaggaJSProcessedObject extends QuaggaJSBoxCoordinates {
+  codeResult?: QuaggaJSCodeResult;
+  line?: Array<{ x: number; y: number }>;
+}
+
+interface QuaggaJSCanvas {
+  ctx: {
+    overlay: CanvasRenderingContext2D;
+  };
+  dom: {
+    overlay: HTMLCanvasElement;
+  };
+}
+
 interface BarcodeScannerProps {
   onClose: () => void;
   onScan: (result: string) => void;
@@ -41,11 +74,14 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
 
     const initQuagga = async () => {
       try {
+        const interactive = document.querySelector("#interactive") as HTMLElement;
+        if (!interactive) return;
+
         await Quagga.init({
           inputStream: {
             name: "Live",
             type: "LiveStream",
-            target: document.querySelector("#interactive"),
+            target: interactive,
             constraints: {
               facingMode: "environment",
               width: { min: 450, ideal: 1280, max: 1920 },
@@ -54,7 +90,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
               frameRate: { ideal: 30, min: 15 }
             },
             area: {
-              top: "30%",    // Zone de scan réduite
+              top: "30%",
               right: "15%",
               left: "15%",
               bottom: "30%"
@@ -62,32 +98,11 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
           },
           locator: {
             patchSize: "medium",
-            halfSample: true,
-            debug: {
-              showCanvas: true,
-              showPatches: false,
-              showFoundPatches: false,
-              showSkeleton: false,
-              showLabels: false,
-              showPatchLabels: false,
-              showRemainingPatchLabels: false,
-              boxFromPatches: {
-                showTransformed: false,
-                showTransformedBox: false,
-                showBB: true
-              }
-            }
+            halfSample: true
           },
           numOfWorkers: 4,
           decoder: {
-            readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader", "upc_e_reader"],
-            debug: {
-              drawBoundingBox: true,
-              showFrequency: false,
-              drawScanline: true,
-              showPattern: false
-            },
-            multiple: false
+            readers: ["ean_reader", "ean_8_reader", "code_128_reader", "code_39_reader", "upc_reader", "upc_e_reader"]
           },
           locate: true,
           frequency: 10
@@ -95,21 +110,19 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
 
         if (!mountedRef.current) return;
 
-        Quagga.start();
+        await Quagga.start();
         console.log('Quagga started successfully');
 
-        Quagga.onDetected((result) => {
+        Quagga.onDetected((result: QuaggaJSDetectedObject) => {
           if (!mountedRef.current) return;
 
           const now = Date.now();
           if (now - lastScanTimeRef.current < 300) return;
 
-          const code = result.codeResult?.code;
-          if (!code || !/^\d{8,13}$/.test(code)) return; // Validation stricte du format
+          const { code, confidence } = result.codeResult;
+          if (!code || !/^\d{8,13}$/.test(code)) return;
 
-          // Vérification de la qualité du scan
-          const confidence = result.codeResult?.confidence;
-          if (confidence < 0.75) return; // Ignore les scans de faible qualité
+          if (confidence < 0.75) return;
 
           if (!scanAttempts.current[code]) {
             scanAttempts.current[code] = 1;
@@ -140,49 +153,52 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
           }
         });
 
-        Quagga.onProcessed((result) => {
-          const drawingCtx = Quagga.canvas?.ctx?.overlay;
-          const drawingCanvas = Quagga.canvas?.dom?.overlay;
+        Quagga.onProcessed((result: QuaggaJSProcessedObject) => {
+          const canvas = (Quagga as unknown as { canvas: QuaggaJSCanvas }).canvas;
+          if (!canvas?.ctx?.overlay || !canvas?.dom?.overlay) return;
 
-          if (!drawingCtx || !drawingCanvas) return;
+          const drawingCtx = canvas.ctx.overlay;
+          const drawingCanvas = canvas.dom.overlay;
 
-          const width = drawingCanvas.width || parseInt(drawingCanvas.getAttribute("width") || "0");
-          const height = drawingCanvas.height || parseInt(drawingCanvas.getAttribute("height") || "0");
+          const width = drawingCanvas.width;
+          const height = drawingCanvas.height;
 
-          if (width && height) {
-            drawingCtx.clearRect(0, 0, width, height);
+          drawingCtx.clearRect(0, 0, width, height);
 
-            // Dessiner le rectangle de scan
-            drawingCtx.strokeStyle = "#FF3B58";
-            drawingCtx.lineWidth = 3;
-            const rectWidth = width * 0.7;  // 70% de la largeur
-            const rectHeight = height * 0.4; // 40% de la hauteur
-            const rectX = (width - rectWidth) / 2;
-            const rectY = (height - rectHeight) / 2;
-            drawingCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
+          // Rectangle de scan
+          drawingCtx.strokeStyle = "#FF3B58";
+          drawingCtx.lineWidth = 3;
+          const rectWidth = width * 0.7;
+          const rectHeight = height * 0.4;
+          const rectX = (width - rectWidth) / 2;
+          const rectY = (height - rectHeight) / 2;
+          drawingCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
 
-            // Ligne de scan
-            const scanLineY = rectY + (rectHeight / 2);
-            drawingCtx.beginPath();
-            drawingCtx.moveTo(rectX, scanLineY);
-            drawingCtx.lineTo(rectX + rectWidth, scanLineY);
-            drawingCtx.strokeStyle = "red";
-            drawingCtx.lineWidth = 2;
-            drawingCtx.stroke();
-          }
+          // Ligne de scan
+          const scanLineY = rectY + (rectHeight / 2);
+          drawingCtx.beginPath();
+          drawingCtx.moveTo(rectX, scanLineY);
+          drawingCtx.lineTo(rectX + rectWidth, scanLineY);
+          drawingCtx.strokeStyle = "red";
+          drawingCtx.lineWidth = 2;
+          drawingCtx.stroke();
 
-          if (result?.box) {
+          if (result.box) {
             drawingCtx.beginPath();
             drawingCtx.strokeStyle = "#00F";
             drawingCtx.lineWidth = 2;
-            drawingCtx.moveTo(result.box[0][0], result.box[0][1]);
-            result.box.forEach((p: number[]) => drawingCtx.lineTo(p[0], p[1]));
+            result.box.forEach((point: Point, index: number) => {
+              if (index === 0) {
+                drawingCtx.moveTo(point[0], point[1]);
+              } else {
+                drawingCtx.lineTo(point[0], point[1]);
+              }
+            });
             drawingCtx.closePath();
             drawingCtx.stroke();
           }
 
-          if (result?.codeResult?.code) {
-            // Afficher le code détecté
+          if (result.codeResult?.code) {
             drawingCtx.font = "bold 16px Arial";
             drawingCtx.fillStyle = "#00FF00";
             drawingCtx.fillText(result.codeResult.code, 10, height - 10);
