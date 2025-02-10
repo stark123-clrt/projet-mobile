@@ -146,8 +146,8 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
           // Rectangle de scan
           drawingCtx.strokeStyle = "#FF3B58";
           drawingCtx.lineWidth = 3;
-          const rectWidth = width;
-          const rectHeight = height * 0.4;
+          const rectWidth = width * 0.6;
+          const rectHeight = height * 0.3;
           const rectX = 0;
           const rectY = (height - rectHeight) / 2;
           drawingCtx.strokeRect(rectX, rectY, rectWidth, rectHeight);
@@ -177,7 +177,7 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             drawingCtx.closePath();
             drawingCtx.stroke();
           }
-          
+
 
           if (result.codeResult?.code) {
             drawingCtx.font = "bold 16px Arial";
