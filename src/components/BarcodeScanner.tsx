@@ -6,41 +6,52 @@ import { X, Camera, CameraOff } from 'lucide-react';
 // Définition des types
 type Point = [number, number];
 
-interface QuaggaJSBoxCoordinates {
-  box: Point[];
-  boxes?: Point[][];
-}
+// interface QuaggaJSBoxCoordinates {
+//   box: Point[];
+//   boxes?: Point[][];
+// }
 
-interface QuaggaJSCodeResult {
-  code: string;
-  format: string;
-  confidence: number;
-}
+// interface QuaggaJSCodeResult {
+//   code: string;
+//   format: string;
+//   confidence: number;
+// }
 
-interface QuaggaJSDetectedObject extends QuaggaJSBoxCoordinates {
-  codeResult: QuaggaJSCodeResult;
-  line: Array<{ x: number; y: number }>;
-}
+// interface QuaggaJSDetectedObject extends QuaggaJSBoxCoordinates {
+//   codeResult: QuaggaJSCodeResult;
+//   line: Array<{ x: number; y: number }>;
+// }
 
-interface QuaggaJSProcessedObject extends QuaggaJSBoxCoordinates {
-  codeResult?: QuaggaJSCodeResult;
-  line?: Array<{ x: number; y: number }>;
-}
+// interface QuaggaJSProcessedObject extends QuaggaJSBoxCoordinates {
+//   codeResult?: QuaggaJSCodeResult;
+//   line?: Array<{ x: number; y: number }>;
+// }
 
-interface QuaggaJSCanvas {
-  ctx: {
-    overlay: CanvasRenderingContext2D;
-  };
-  dom: {
-    overlay: HTMLCanvasElement;
-  };
-}
+// interface QuaggaJSCanvas {
+//   ctx: {
+//     overlay: CanvasRenderingContext2D;
+//   };
+//   dom: {
+//     overlay: HTMLCanvasElement;
+//   };
+// }
 
 interface BarcodeScannerProps {
   onClose: () => void;
   onScan: (result: string) => void;
   showCloseButton?: boolean;
 }
+
+// type QuaggaCallback = (result: any) => void;
+
+// interface QuaggaJSCanvas {
+//   ctx: {
+//     overlay: CanvasRenderingContext2D;
+//   };
+//   dom: {
+//     overlay: HTMLCanvasElement;
+//   };
+// }
 
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCloseButton = true }) => {
 
@@ -113,27 +124,27 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
         await Quagga.start();
         console.log('Quagga started successfully');
 
-        Quagga.onDetected((result: QuaggaJSDetectedObject) => {
+        Quagga.onDetected((result: any) => {
           if (!mountedRef.current) return;
-
+        
           const now = Date.now();
           if (now - lastScanTimeRef.current < 300) return;
-
+        
           const { code, confidence } = result.codeResult;
           if (!code || !/^\d{8,13}$/.test(code)) return;
-
+        
           if (confidence < 0.75) return;
-
+        
           if (!scanAttempts.current[code]) {
             scanAttempts.current[code] = 1;
           } else {
             scanAttempts.current[code]++;
           }
-
+        
           if (scanAttempts.current[code] >= 2 && code !== lastResultRef.current) {
             lastResultRef.current = code;
             lastScanTimeRef.current = now;
-
+        
             try {
               Quagga.pause();
               onScan(code);
@@ -152,14 +163,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({ onClose, onScan, showCl
             }
           }
         });
+        
 
-        Quagga.onProcessed((result: QuaggaJSProcessedObject) => {
-          const canvas = (Quagga as unknown as { canvas: QuaggaJSCanvas }).canvas;
+        Quagga.onProcessed((result: any) => {
+          const canvas = (Quagga as any).canvas;
           if (!canvas?.ctx?.overlay || !canvas?.dom?.overlay) return;
-
+        
           const drawingCtx = canvas.ctx.overlay;
           const drawingCanvas = canvas.dom.overlay;
-
+        
           const width = drawingCanvas.width;
           const height = drawingCanvas.height;
 
